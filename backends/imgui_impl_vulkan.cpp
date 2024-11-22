@@ -1695,6 +1695,8 @@ static void ImGui_ImplVulkan_CreateWindow(ImGuiViewport* viewport)
     // Create SwapChain, RenderPass, Framebuffer, etc.
     wd->ClearEnable = (viewport->Flags & ImGuiViewportFlags_NoRendererClear) ? false : true;
     wd->UseDynamicRendering = v->UseDynamicRendering;
+    wd->SurfaceFormat.format = VK_FORMAT_B8G8R8A8_UNORM; // Match your main swapchain format
+    wd->SurfaceFormat.colorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
     ImGui_ImplVulkanH_CreateOrResizeWindow(v->Instance, v->PhysicalDevice, v->Device, wd, v->QueueFamily, v->Allocator, (int)viewport->Size.x, (int)viewport->Size.y, v->MinImageCount);
     vd->WindowOwned = true;
 
