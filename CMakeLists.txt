@@ -20,6 +20,7 @@ set(IMGUI_SOURCES
     imstb_rectpack.h
     imstb_textedit.h
     imstb_truetype.h
+    backends/imgui_impl_win32.cpp
 )
 
 # Add source files to the target
