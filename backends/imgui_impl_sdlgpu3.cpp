@@ -22,6 +22,7 @@
 //   Calling the function is MANDATORY, otherwise the ImGui will not upload neither the vertex nor the index buffer for the GPU. See imgui_impl_sdlgpu3.cpp for more info.
 
 // CHANGELOG
+//  2025-11-26: macOS version can use MSL shaders in order to support macOS 10.14+ (vs Metallib shaders requiring macOS 14+). Requires calling SDL_CreateGPUDevice() with SDL_GPU_SHADERFORMAT_MSL.
 //  2025-09-18: Call platform_io.ClearRendererHandlers() on shutdown.
 //  2025-08-20: Added ImGui_ImplSDLGPU3_InitInfo::SwapchainComposition and ImGui_ImplSDLGPU3_InitInfo::PresentMode to configure how secondary viewports are created.
 //  2025-08-08: *BREAKING* Changed ImTextureID type from SDL_GPUTextureSamplerBinding* to SDL_GPUTexture*, which is more natural and easier for user to manage. If you need to change the current sampler, you can access the ImGui_ImplSDLGPU3_RenderState struct. (#8866, #8163, #7998, #7988)
@@ -307,8 +308,7 @@ void ImGui_ImplSDLGPU3_RenderDrawData(ImDrawData* draw_data, SDL_GPUCommandBuffe
 static void ImGui_ImplSDLGPU3_DestroyTexture(ImTextureData* tex)
 {
     ImGui_ImplSDLGPU3_Data* bd = ImGui_ImplSDLGPU3_GetBackendData();
-    SDL_GPUTexture* raw_tex = (SDL_GPUTexture*)(intptr_t)tex->GetTexID();
-    if (raw_tex != nullptr)
+    if (SDL_GPUTexture* raw_tex = (SDL_GPUTexture*)(intptr_t)tex->GetTexID())
         SDL_ReleaseGPUTexture(bd->InitInfo.Device, raw_tex);
 
     // Clear identifiers and mark as destroyed (in order to allow e.g. calling InvalidateDeviceObjects while running)
@@ -453,14 +453,31 @@ static void ImGui_ImplSDLGPU3_CreateShaders()
 #ifdef __APPLE__
     else
     {
-        vertex_shader_info.entrypoint = "main0";
-        vertex_shader_info.format = SDL_GPU_SHADERFORMAT_METALLIB;
-        vertex_shader_info.code = metallib_vertex;
-        vertex_shader_info.code_size = sizeof(metallib_vertex);
-        fragment_shader_info.entrypoint = "main0";
-        fragment_shader_info.format = SDL_GPU_SHADERFORMAT_METALLIB;
-        fragment_shader_info.code = metallib_fragment;
-        fragment_shader_info.code_size = sizeof(metallib_fragment);
+        SDL_GPUShaderFormat supported_formats = SDL_GetGPUShaderFormats(v->Device);
+        if (supported_formats & SDL_GPU_SHADERFORMAT_METALLIB)
+        {
+            // Using metallib blobs (macOS 14+, iOS)
+            vertex_shader_info.entrypoint = "main0";
+            vertex_shader_info.format = SDL_GPU_SHADERFORMAT_METALLIB;
+            vertex_shader_info.code = metallib_vertex;
+            vertex_shader_info.code_size = sizeof(metallib_vertex);
+            fragment_shader_info.entrypoint = "main0";
+            fragment_shader_info.format = SDL_GPU_SHADERFORMAT_METALLIB;
+            fragment_shader_info.code = metallib_fragment;
+            fragment_shader_info.code_size = sizeof(metallib_fragment);
+        }
+        else if (supported_formats & SDL_GPU_SHADERFORMAT_MSL)
+        {
+            // macOS: using MSL source
+            vertex_shader_info.entrypoint = "main0";
+            vertex_shader_info.format = SDL_GPU_SHADERFORMAT_MSL;
+            vertex_shader_info.code = msl_vertex;
+            vertex_shader_info.code_size = sizeof(msl_vertex);
+            fragment_shader_info.entrypoint = "main0";
+            fragment_shader_info.format = SDL_GPU_SHADERFORMAT_MSL;
+            fragment_shader_info.code = msl_fragment;
+            fragment_shader_info.code_size = sizeof(msl_fragment);
+        }
     }
 #endif
     bd->VertexShader = SDL_CreateGPUShader(v->Device, &vertex_shader_info);

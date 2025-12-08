@@ -1,4 +1,4 @@
-// Dear ImGui: standalone example application for DirectX 10
+// Dear ImGui: standalone example application for Windows API + DirectX 10
 
 // Learn about Dear ImGui:
 // - FAQ                  https://dearimgui.com/faq
@@ -198,6 +198,7 @@ int main(int, char**)
 bool CreateDeviceD3D(HWND hWnd)
 {
     // Setup swap chain
+    // This is a basic setup. Optimally could use handle fullscreen mode differently. See #8979 for suggestions.
     DXGI_SWAP_CHAIN_DESC sd;
     ZeroMemory(&sd, sizeof(sd));
     sd.BufferCount = 2;
